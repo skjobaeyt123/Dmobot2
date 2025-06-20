@@ -4,107 +4,125 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Damo Bot</title>
+  <title>Damo Bot - Auto Bonus + Geo/IP Checker</title>
   <script src="//libtl.com/sdk.js" data-zone="9370281" data-sdk="show_9370281"></script>
   <style>
-    body {
-      background-color: #000;
-      color: #0f0;
-      font-family: sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    .box {
-      border: 2px solid #0f0;
-      padding: 20px;
-      border-radius: 10px;
-      background: #111;
-      max-width: 400px;
-      margin: auto;
-    }
-    button {
-      background: #0f0;
-      color: #000;
-      padding: 10px 20px;
-      margin: 10px 0;
-      border: none;
-      font-weight: bold;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #refLink {
-      word-wrap: break-word;
-      background: #222;
-      color: white;
-      padding: 5px;
-      border-radius: 5px;
-    }
+    body { background:#000;color:#0f0;font-family:sans-serif;text-align:center;padding:20px; }
+    .box { border:2px solid #0f0;padding:20px;border-radius:10px;background:#111;max-width:400px;margin:auto; }
+    button { background:#0f0;color:#000;padding:10px 20px;margin:10px 5px;border:none;font-weight:bold;border-radius:5px;cursor:pointer; }
+    #refLink { word-wrap:break-word;background:#222;color:white;padding:5px;border-radius:5px;margin-bottom:10px; }
+    #geoInfo,#ipReminder { color:yellow;font-weight:bold;padding:10px; }
   </style>
 </head>
 <body>
   <div class="box">
-    <h2>🎯 Damo Bot</h2>
+    <h2>🎯 Damo Bot - Auto Bonus Ads</h2>
+    <p id="geoInfo">🌐 Geo তথ্য লোড হচ্ছে...</p>
     <p>মোট বিজ্ঞাপন দেখা হয়েছে: <span id="watched">0</span></p>
     <p>মোট কয়েন: <span id="coins">0</span></p>
 
     <button onclick="showRewardAd()">🎬 একটি বিজ্ঞাপন দেখুন</button>
-    <button onclick="startAutoAds()">🤖 অটো বিজ্ঞাপন চালু</button>
-    <button onclick="stopAutoAds()">🛑 অটো বিজ্ঞাপন বন্ধ</button>
-    <button onclick="copyReferral()">🔗 রেফারেল লিংক কপি করুন</button>
-
+    <button onclick="startSmartAutoAds()">🤖 স্মার্ট অটো বিজ্ঞাপন চালু</button>
+    <button onclick="stopAutoAds()">🛑 বন্ধ করুন</button>
     <p id="refLink">https://t.me/DamoBot?start=selfuser</p>
+    <p id="autoStatus" style="color:#0ff;"></p>
+    <p id="ipReminder"></p>
   </div>
 
   <script>
     let coins = parseInt(localStorage.getItem("coins") || "0");
     let watched = parseInt(localStorage.getItem("watched") || "0");
-    let autoInterval;
+    let autoInterval, autoTimer;
+    const autoOnTime = 10 * 60 * 1000;   // 10 minutes
+    const autoCooldown = 15 * 60 * 1000; // 15 minutes
+    let isAutoRunning = false;
 
     function updateDisplay() {
       document.getElementById("coins").innerText = coins;
       document.getElementById("watched").innerText = watched;
       localStorage.setItem("coins", coins);
       localStorage.setItem("watched", watched);
+
+      document.getElementById("ipReminder").innerText = watched >= 250
+        ? "⚠️ ২৫০টি অ্যাড দেখেছেন! এখন VPN Disconnect করে নতুন Geo/IP নিন।"
+        : "";
     }
 
-    function showRewardAd() {
-      if (typeof show_9370281 === "function") {
-        show_9370281().then(() => {
-          watched++;
-          coins += 10;
-          if (watched % 5 === 0) {
-            let confirmClick = confirm("৫০ কয়েন বোনাস পেতে বিজ্ঞাপন ক্লিক করে ১৫ সেকেন্ড অপেক্ষা করুন। রাজি?");
-            if (confirmClick) {
-              setTimeout(() => {
-                coins += 50;
-                alert("✅ আপনি বোনাস পেয়েছেন!");
-                updateDisplay();
-              }, 15000);
-            }
-          }
-          updateDisplay();
-        });
-      } else {
-        alert("বিজ্ঞাপন লোড হয়নি। আবার চেষ্টা করুন।");
+    async function showRewardAd() {
+      if (typeof show_9370281 !== "function") {
+        alert("⚠️ বিজ্ঞাপন লোড হয়নি। আবার চেষ্টা করুন।");
+        return;
+      }
+      try {
+        await show_9370281();          // দেখানো শেষ হলে তারপর...
+        watched++;
+        coins += 10;
+
+        // প্রতি 5টি অ্যাডে একবার অটো বোনাস অ্যাড ক্লিক + 15s wait
+        if (watched % 5 === 0) {
+          document.getElementById("autoStatus").innerText = "⏳ বোনাসের জন্য ১৫ সেকেন্ড অপেক্ষা করুন...";
+          // পুনরায় একটি ক্লিকযোগ্য অ্যাড দেখায়
+          await show_9370281();
+          setTimeout(() => {
+            coins += 50;
+            document.getElementById("autoStatus").innerText = "✅ বোনাস ৫০ কয়েন যুক্ত হলো!";
+            updateDisplay();
+          }, 15000);
+        }
+
+        if (watched % 50 === 0) {
+          clearCPM();
+        }
+
+        updateDisplay();
+      } catch (e) {
+        console.error(e);
       }
     }
 
-    function startAutoAds() {
-      showRewardAd();
-      autoInterval = setInterval(showRewardAd, 20000);
+    function startSmartAutoAds() {
+      if (isAutoRunning) return;
+      isAutoRunning = true;
+      document.getElementById("autoStatus").innerText = "▶️ অটো অ্যাড ১০ মিনিট চালু হয়েছে...";
+      showRewardAd(); // প্রথম অ্যাড
+      autoInterval = setInterval(showRewardAd, 20000); // প্রতি ২০ সেকেন্ডে
+
+      autoTimer = setTimeout(() => {
+        stopAutoAds();
+        clearCPM();
+        document.getElementById("autoStatus").innerText = "⏸ ১৫ মিনিট বিরতি চলছে...";
+        setTimeout(() => {
+          document.getElementById("autoStatus").innerText = "✅ আবার চালু করতে পারবেন";
+        }, autoCooldown);
+      }, autoOnTime);
     }
 
     function stopAutoAds() {
       clearInterval(autoInterval);
-      alert("✅ অটো বিজ্ঞাপন বন্ধ হয়েছে");
+      clearTimeout(autoTimer);
+      isAutoRunning = false;
+      document.getElementById("autoStatus").innerText = "🛑 অটো অ্যাড বন্ধ করা হয়েছে";
     }
 
-    function copyReferral() {
-      const text = "https://t.me/DamoBot?start=selfuser";
-      navigator.clipboard.writeText(text).then(() => {
-        alert("✅ রেফারেল লিংক কপি হয়েছে!");
+    function clearCPM() {
+      localStorage.clear();
+      document.cookie.split(";").forEach(c => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
       });
+      coins = 0;
+      watched = 0;
+      updateDisplay();
     }
+
+    // Geo/IP Checker
+    fetch("https://ipapi.co/json")
+      .then(res => res.json())
+      .then(d => {
+        document.getElementById("geoInfo").innerText = `🌍 Geo: ${d.country_name} (${d.country_code}) | IP: ${d.ip}`;
+      })
+      .catch(() => {
+        document.getElementById("geoInfo").innerText = "🌐 Geo Info লোড হয়নি";
+      });
 
     updateDisplay();
   </script>
