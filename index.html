@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Damo Bot</title>
+  <script src="//libtl.com/sdk.js" data-zone="9370281" data-sdk="show_9370281"></script>
+  <style>
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .box {
+      border: 2px solid #0f0;
+      padding: 20px;
+      border-radius: 10px;
+      background: #111;
+      max-width: 400px;
+      margin: auto;
+    }
+    button {
+      background: #0f0;
+      color: #000;
+      padding: 10px 20px;
+      margin: 10px 0;
+      border: none;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #refLink {
+      word-wrap: break-word;
+      background: #222;
+      color: white;
+      padding: 5px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🎯 Damo Bot</h2>
+    <p>মোট বিজ্ঞাপন দেখা হয়েছে: <span id="watched">0</span></p>
+    <p>মোট কয়েন: <span id="coins">0</span></p>
+
+    <button onclick="showRewardAd()">🎬 একটি বিজ্ঞাপন দেখুন</button>
+    <button onclick="startAutoAds()">🤖 অটো বিজ্ঞাপন চালু</button>
+    <button onclick="stopAutoAds()">🛑 অটো বিজ্ঞাপন বন্ধ</button>
+    <button onclick="copyReferral()">🔗 রেফারেল লিংক কপি করুন</button>
+
+    <p id="refLink">https://t.me/DamoBot?start=selfuser</p>
+  </div>
+
+  <script>
+    let coins = parseInt(localStorage.getItem("coins") || "0");
+    let watched = parseInt(localStorage.getItem("watched") || "0");
+    let autoInterval;
+
+    function updateDisplay() {
+      document.getElementById("coins").innerText = coins;
+      document.getElementById("watched").innerText = watched;
+      localStorage.setItem("coins", coins);
+      localStorage.setItem("watched", watched);
+    }
+
+    function showRewardAd() {
+      if (typeof show_9370281 === "function") {
+        show_9370281().then(() => {
+          watched++;
+          coins += 10;
+          if (watched % 5 === 0) {
+            let confirmClick = confirm("৫০ কয়েন বোনাস পেতে বিজ্ঞাপন ক্লিক করে ১৫ সেকেন্ড অপেক্ষা করুন। রাজি?");
+            if (confirmClick) {
+              setTimeout(() => {
+                coins += 50;
+                alert("✅ আপনি বোনাস পেয়েছেন!");
+                updateDisplay();
+              }, 15000);
+            }
+          }
+          updateDisplay();
+        });
+      } else {
+        alert("বিজ্ঞাপন লোড হয়নি। আবার চেষ্টা করুন।");
+      }
+    }
+
+    function startAutoAds() {
+      showRewardAd();
+      autoInterval = setInterval(showRewardAd, 20000);
+    }
+
+    function stopAutoAds() {
+      clearInterval(autoInterval);
+      alert("✅ অটো বিজ্ঞাপন বন্ধ হয়েছে");
+    }
+
+    function copyReferral() {
+      const text = "https://t.me/DamoBot?start=selfuser";
+      navigator.clipboard.writeText(text).then(() => {
+        alert("✅ রেফারেল লিংক কপি হয়েছে!");
+      });
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>
